@@ -5,6 +5,7 @@ import com.googlecode.d2j.DexType;
 import com.googlecode.d2j.Field;
 import com.googlecode.d2j.Method;
 import com.googlecode.d2j.node.DexCodeNode;
+import com.googlecode.d2j.node.DexDebugNode;
 import com.googlecode.d2j.node.TryCatchNode;
 import com.googlecode.d2j.node.analysis.DvmFrame;
 import com.googlecode.d2j.node.analysis.DvmInterpreter;
@@ -25,6 +26,7 @@ import static com.googlecode.dex2jar.ir.stmt.Stmts.*;
 
 public class Dex2IRConverter {
     Map<DexLabel, DexLabelStmtNode> labelMap = new HashMap<>();
+    Map<DexLabel, DexDebugNode.DexDebugOpNode.LineNumber> lineMap = new HashMap<>();
     List<DexStmtNode> insnList;
     int[] parentCount;
     IrMethod target;
@@ -78,6 +80,22 @@ public class Dex2IRConverter {
                 DexLabelStmtNode dexLabelStmtNode = (DexLabelStmtNode) stmtNode;
                 labelMap.put(dexLabelStmtNode.label, dexLabelStmtNode);
             }
+        }
+
+        if (dexCodeNode.debugNode != null) {
+            DexDebugNode debugNode = dexCodeNode.debugNode;
+            for (DexDebugNode.DexDebugOpNode opNode : debugNode.debugNodes) {
+                if (!(opNode instanceof DexDebugNode.DexDebugOpNode.LineNumber))
+                    continue;
+
+                if (lineMap.containsKey(opNode.label))
+                    continue;
+
+                DexDebugNode.DexDebugOpNode.LineNumber line = (DexDebugNode.DexDebugOpNode.LineNumber)opNode;
+                lineMap.put(opNode.label, (DexDebugNode.DexDebugOpNode.LineNumber)opNode);
+            }
+
+            
         }
 
         fixExceptionHandlers();
@@ -1238,6 +1256,12 @@ public class Dex2IRConverter {
         LabelStmt ls = map.get(label);
         if (ls == null) {
             ls = Stmts.nLabel();
+
+            DexDebugNode.DexDebugOpNode.LineNumber line = lineMap.get(label);
+            if (line != null) {
+                ls.lineNumber = line.line;
+            }
+
             map.put(label, ls);
         }
         return ls;

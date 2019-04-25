@@ -88,6 +88,19 @@ public class IR2JConverter implements Opcodes {
                     asm.visitTryCatchBlock((Label) trap.start.tag, (Label) trap.end.tag, (Label) trap.handlers[i].tag,
                             type == null ? null : toInternal(type));
                 }
+
+                if (trap.start.lineNumber > 0) {
+                    asm.visitLineNumber(trap.start.lineNumber, (Label)trap.start.tag);
+                }
+                if (trap.end.lineNumber > 0) {
+                    asm.visitLineNumber(trap.end.lineNumber, (Label)trap.end.tag);
+                }
+                for (int i = 0; i < trap.handlers.length; i++) {
+                    if (trap.handlers[i].lineNumber > 0) {
+                        asm.visitLineNumber(trap.handlers[i].lineNumber, (Label) trap.handlers[i].tag);
+                    }
+                }
+
             }
         }
     }
@@ -260,8 +273,13 @@ public class IR2JConverter implements Opcodes {
                 }
             }
             break;
-            case GOTO:
-                asm.visitJumpInsn(GOTO, (Label) ((GotoStmt) st).target.tag);
+            case GOTO: {
+                GotoStmt goSt = (GotoStmt) st;
+                asm.visitJumpInsn(GOTO, (Label) goSt.target.tag);
+                if (goSt.target.lineNumber > 0) {
+                    asm.visitLineNumber(goSt.target.lineNumber, (Label)goSt.target.tag);
+                }
+            }
                 break;
             case IF:
                 reBuildJumpInstructions((IfStmt) st, asm);
@@ -347,6 +365,15 @@ public class IR2JConverter implements Opcodes {
                     targets[i] = (Label) lss.targets[i].tag;
                 }
                 asm.visitLookupSwitchInsn((Label) lss.defaultTarget.tag, lss.lookupValues, targets);
+
+                for (int i = 0; i < targets.length; i++) {
+                    if (lss.targets[i].lineNumber > 0) {
+                        asm.visitLineNumber(lss.targets[i].lineNumber, targets[i]);
+                    }
+                }
+                if (lss.defaultTarget.lineNumber > 0) {
+                    asm.visitLineNumber(lss.defaultTarget.lineNumber, (Label)lss.defaultTarget.tag);
+                }
             }
                 break;
             case TABLE_SWITCH: {
@@ -358,6 +385,15 @@ public class IR2JConverter implements Opcodes {
                 }
                 asm.visitTableSwitchInsn(tss.lowIndex, tss.lowIndex + targets.length - 1,
                         (Label) tss.defaultTarget.tag, targets);
+
+                for (int i = 0; i < targets.length; i++) {
+                    if (tss.targets[i].lineNumber > 0) {
+                        asm.visitLineNumber(tss.targets[i].lineNumber, targets[i]);
+                    }
+                }
+                if (tss.defaultTarget.lineNumber > 0) {
+                    asm.visitLineNumber(tss.defaultTarget.lineNumber, (Label)tss.defaultTarget.tag);
+                }
             }
                 break;
             case THROW:
@@ -515,6 +551,11 @@ public class IR2JConverter implements Opcodes {
                 }
             }
             break;
+        }
+
+
+        if (st.target.lineNumber > 0) {
+            asm.visitLineNumber(st.target.lineNumber, target);
         }
     }
 
